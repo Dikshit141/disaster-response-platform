@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disaster Response Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2rem; background: #f9f9f9; }
+    h2 { margin-top: 2rem; }
+    form, .results { margin-bottom: 2rem; }
+    input, textarea, button { display: block; margin: 0.5rem 0; width: 100%; max-width: 600px; }
+    .card { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>🌐 Disaster Response Platform</h1>
+
+  <h2>Create Disaster</h2>
+  <form id="createDisaster">
+    <input type="text" placeholder="Title" name="title" required />
+    <textarea name="description" placeholder="Description" required></textarea>
+    <input type="text" placeholder="Location Name" name="location_name" required />
+    <input type="text" placeholder="Comma-separated Tags" name="tags" />
+    <button type="submit">Create</button>
+  </form>
+
+  <h2>Submit Report</h2>
+  <form id="submitReport">
+    <input type="text" placeholder="Disaster ID" name="disaster_id" required />
+    <textarea name="content" placeholder="Report content" required></textarea>
+    <input type="text" placeholder="Image URL" name="image_url" />
+    <input type="text" placeholder="User ID" name="user_id" required />
+    <button type="submit">Submit Report</button>
+  </form>
+
+  <h2>All Disasters</h2>
+  <button onclick="fetchDisasters()">Refresh</button>
+  <div class="results" id="disasterList"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001';
+
+    document.getElementById('createDisaster').onsubmit = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        title: form.title.value,
+        description: form.description.value,
+        location_name: form.location_name.value,
+        tags: form.tags.value.split(',').map(t => t.trim()),
+        owner_id: 'netrunnerX'
+      };
+      const res = await fetch(`${API_BASE}/disasters`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      alert(JSON.stringify(json));
+      form.reset();
+    };
+
+    document.getElementById('submitReport').onsubmit = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        disaster_id: form.disaster_id.value,
+        content: form.content.value,
+        image_url: form.image_url.value,
+        user_id: form.user_id.value,
+        verification_status: 'pending'
+      };
+      const res = await fetch(`${API_BASE}/verify-image/${data.disaster_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url: data.image_url })
+      });
+      const json = await res.json();
+      alert(`Verification: ${json.verification}`);
+      form.reset();
+    };
+
+    async function fetchDisasters() {
+      const res = await fetch(`${API_BASE}/disasters`);
+      const data = await res.json();
+      const list = document.getElementById('disasterList');
+      list.innerHTML = '';
+      data.forEach(d => {
+        list.innerHTML += `<div class="card">
+          <strong>${d.title}</strong> <br />
+          ${d.description}<br />
+          Location: ${d.location_name}<br />
+          Tags: ${d.tags?.join(', ')}
+        </div>`;
+      });
+    }
+  </script>
+</body>
+</html>
