@@ -27,6 +27,10 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(bodyParser.json());
+app.get('/', (req, res) => {
+    res.send('Disaster Response API is live ✅');
+  });
+  
 
 // API Routes
 app.use('/disasters', disasterRoutes(io, supabase));

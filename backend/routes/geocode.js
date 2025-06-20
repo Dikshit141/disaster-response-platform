@@ -7,6 +7,7 @@ const axios = require('axios');
 module.exports = (supabase) => {
   router.post('/', async (req, res) => {
     const { description } = req.body;
+
     try {
       const place = await extractLocation(description);
       if (!place) return res.status(400).json({ error: 'Location extraction failed' });
