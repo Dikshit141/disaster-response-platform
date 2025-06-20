@@ -2,98 +2,123 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Disaster Response Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Disaster Response Platform</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 2rem; background: #f9f9f9; }
-    h2 { margin-top: 2rem; }
-    form, .results { margin-bottom: 2rem; }
-    input, textarea, button { display: block; margin: 0.5rem 0; width: 100%; max-width: 600px; }
-    .card { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin: 1rem 0; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background: #f9f9f9;
+    }
+    h1 {
+      color: #333;
+    }
+    form {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 0.5rem 0;
+    }
+    button {
+      padding: 8px 12px;
+      background: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .disaster {
+      background: #fff;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-left: 5px solid #007BFF;
+    }
   </style>
 </head>
 <body>
-  <h1>🌐 Disaster Response Platform</h1>
+  <h1>Disaster Response Dashboard</h1>
 
-  <h2>Create Disaster</h2>
-  <form id="createDisaster">
-    <input type="text" placeholder="Title" name="title" required />
-    <textarea name="description" placeholder="Description" required></textarea>
-    <input type="text" placeholder="Location Name" name="location_name" required />
-    <input type="text" placeholder="Comma-separated Tags" name="tags" />
-    <button type="submit">Create</button>
+  <!-- Disaster Creation Form -->
+  <form id="disaster-form">
+    <input type="text" id="title" placeholder="Disaster Title" required />
+    <input type="text" id="location_name" placeholder="Location Name (e.g. Manhattan, NYC)" required />
+    <textarea id="description" placeholder="Description" required></textarea>
+    <input type="text" id="tags" placeholder="Tags (comma separated: flood,urgent)" />
+    <button type="submit">Create Disaster</button>
   </form>
 
-  <h2>Submit Report</h2>
-  <form id="submitReport">
-    <input type="text" placeholder="Disaster ID" name="disaster_id" required />
-    <textarea name="content" placeholder="Report content" required></textarea>
-    <input type="text" placeholder="Image URL" name="image_url" />
-    <input type="text" placeholder="User ID" name="user_id" required />
-    <button type="submit">Submit Report</button>
-  </form>
+  <!-- Display Disasters -->
+  <div id="disaster-list"></div>
 
-  <h2>All Disasters</h2>
-  <button onclick="fetchDisasters()">Refresh</button>
-  <div class="results" id="disasterList"></div>
-
+  <!-- Socket.IO & API Integration -->
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
-    const API_BASE = 'http://localhost:3001';
+    const API_BASE = "http://localhost:3001"; // Use your backend URL if deployed
 
-    document.getElementById('createDisaster').onsubmit = async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const data = {
-        title: form.title.value,
-        description: form.description.value,
-        location_name: form.location_name.value,
-        tags: form.tags.value.split(',').map(t => t.trim()),
-        owner_id: 'netrunnerX'
-      };
-      const res = await fetch(`${API_BASE}/disasters`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const json = await res.json();
-      alert(JSON.stringify(json));
-      form.reset();
-    };
+    // Socket.IO setup
+    const socket = io(API_BASE);
 
-    document.getElementById('submitReport').onsubmit = async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const data = {
-        disaster_id: form.disaster_id.value,
-        content: form.content.value,
-        image_url: form.image_url.value,
-        user_id: form.user_id.value,
-        verification_status: 'pending'
-      };
-      const res = await fetch(`${API_BASE}/verify-image/${data.disaster_id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_url: data.image_url })
-      });
-      const json = await res.json();
-      alert(`Verification: ${json.verification}`);
-      form.reset();
-    };
+    socket.on('disaster_updated', (data) => {
+      console.log('Disaster updated:', data);
+      fetchDisasters();
+    });
 
+    socket.on('social_media_updated', (data) => {
+      console.log('Social media updated:', data);
+    });
+
+    socket.on('updates_available', (data) => {
+      console.log('Official updates:', data);
+    });
+
+    // Fetch disasters from backend
     async function fetchDisasters() {
       const res = await fetch(`${API_BASE}/disasters`);
       const data = await res.json();
-      const list = document.getElementById('disasterList');
-      list.innerHTML = '';
-      data.forEach(d => {
-        list.innerHTML += `<div class="card">
-          <strong>${d.title}</strong> <br />
-          ${d.description}<br />
-          Location: ${d.location_name}<br />
-          Tags: ${d.tags?.join(', ')}
-        </div>`;
+      const container = document.getElementById('disaster-list');
+      container.innerHTML = '';
+      data.forEach(disaster => {
+        const div = document.createElement('div');
+        div.className = 'disaster';
+        div.innerHTML = `
+          <h3>${disaster.title}</h3>
+          <p><strong>Location:</strong> ${disaster.location_name}</p>
+          <p>${disaster.description}</p>
+          <p><strong>Tags:</strong> ${disaster.tags?.join(', ') || 'None'}</p>
+        `;
+        container.appendChild(div);
       });
     }
+
+    // Handle form submit
+    document.getElementById('disaster-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('title').value;
+      const location_name = document.getElementById('location_name').value;
+      const description = document.getElementById('description').value;
+      const tags = document.getElementById('tags').value.split(',').map(tag => tag.trim());
+
+      const res = await fetch(`${API_BASE}/disasters`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, location_name, description, tags })
+      });
+
+      if (res.ok) {
+        document.getElementById('disaster-form').reset();
+        fetchDisasters();
+      } else {
+        alert('Failed to create disaster');
+      }
+    });
+
+    // Initial load
+    fetchDisasters();
   </script>
 </body>
 </html>
